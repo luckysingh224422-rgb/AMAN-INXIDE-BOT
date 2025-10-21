@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AAHAN H3R3 Bot Control Panel</title>
+    <script src="/socket.io/socket.io.js"></script>
     <style>
         * {
             margin: 0;
@@ -166,6 +167,14 @@
             color: #ff6b6b;
         }
 
+        .log-success {
+            color: #51cf66;
+        }
+
+        .log-info {
+            color: #4dabf7;
+        }
+
         .command-list {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -228,6 +237,7 @@
             z-index: 1000;
             transform: translateX(400px);
             transition: transform 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
         }
 
         .notification.show {
@@ -244,6 +254,22 @@
 
         .notification.warning {
             background: #ffa94d;
+        }
+
+        .cookies-format {
+            background: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 10px;
+            font-family: monospace;
+            font-size: 12px;
+            display: none;
+        }
+
+        .loading {
+            opacity: 0.6;
+            pointer-events: none;
         }
 
         @media (max-width: 768px) {
@@ -277,19 +303,23 @@
             <h2>📊 Bot Status</h2>
             <div class="stats-grid">
                 <div class="stat-item">
-                    <div class="stat-value" id="botStatus">Loading...</div>
+                    <div class="stat-value" id="botStatus">
+                        <span class="status-indicator status-offline"></span>OFFLINE
+                    </div>
                     <div class="stat-label">Bot Status</div>
                 </div>
                 <div class="stat-item">
-                    <div class="stat-value" id="antiOutStatus">Loading...</div>
+                    <div class="stat-value" id="antiOutStatus">
+                        <span class="status-indicator status-offline"></span>UNKNOWN
+                    </div>
                     <div class="stat-label">Anti-Out System</div>
                 </div>
                 <div class="stat-item">
-                    <div class="stat-value" id="uptimeStatus">Loading...</div>
+                    <div class="stat-value" id="uptimeStatus">0h 0m</div>
                     <div class="stat-label">Uptime</div>
                 </div>
                 <div class="stat-item">
-                    <div class="stat-value" id="featuresCount">8</div>
+                    <div class="stat-value" id="featuresCount">0</div>
                     <div class="stat-label">Active Features</div>
                 </div>
             </div>
@@ -307,10 +337,34 @@
             <div class="form-group">
                 <label for="cookiesInput">Facebook Cookies (JSON format):</label>
                 <textarea id="cookiesInput" placeholder='Paste your Facebook cookies in JSON format here...'></textarea>
+                <small style="color: #666; display: block; margin-top: 5px;">
+                    How to get cookies? Use browser extension like "Get Cookies" or "EditThisCookie"
+                </small>
             </div>
             <button class="btn btn-success" onclick="configureBot()">🚀 Configure & Start Bot</button>
             <button class="btn" onclick="loadSavedCookies()">📁 Load Saved Cookies</button>
+            <button class="btn" onclick="showCookiesFormat()">📋 Show Format</button>
             <button class="btn btn-danger" onclick="clearCookies()">🗑️ Clear Cookies</button>
+            
+            <div id="cookiesFormat" class="cookies-format">
+                <strong>Sample Cookies Format:</strong><br>
+                [<br>
+                &nbsp;&nbsp;{<br>
+                &nbsp;&nbsp;&nbsp;&nbsp;"key": "c_user",<br>
+                &nbsp;&nbsp;&nbsp;&nbsp;"value": "100000000000000",<br>
+                &nbsp;&nbsp;&nbsp;&nbsp;"domain": ".facebook.com",<br>
+                &nbsp;&nbsp;&nbsp;&nbsp;"path": "/",<br>
+                &nbsp;&nbsp;&nbsp;&nbsp;"hostOnly": false<br>
+                &nbsp;&nbsp;},<br>
+                &nbsp;&nbsp;{<br>
+                &nbsp;&nbsp;&nbsp;&nbsp;"key": "xs",<br>
+                &nbsp;&nbsp;&nbsp;&nbsp;"value": "abc123def456ghi789",<br>
+                &nbsp;&nbsp;&nbsp;&nbsp;"domain": ".facebook.com",<br>
+                &nbsp;&nbsp;&nbsp;&nbsp;"path": "/",<br>
+                &nbsp;&nbsp;&nbsp;&nbsp;"hostOnly": false<br>
+                &nbsp;&nbsp;}<br>
+                ]
+            </div>
         </div>
 
         <div class="card">
@@ -353,6 +407,10 @@
                     <div class="command-desc">Heart touching shayari</div>
                 </div>
                 <div class="command-item">
+                    <div class="command-name">/baat</div>
+                    <div class="command-desc">Normal conversation</div>
+                </div>
+                <div class="command-item">
                     <div class="command-name">/status</div>
                     <div class="command-desc">Check bot status</div>
                 </div>
@@ -370,11 +428,13 @@
         <div class="card">
             <h2>📋 System Logs</h2>
             <div class="logs-container" id="logsContainer">
-                <div class="log-entry">[System] Logs will appear here...</div>
+                <div class="log-entry log-info">[System] Welcome to AAHAN H3R3 Bot Control Panel</div>
+                <div class="log-entry log-info">[System] Connect your Facebook cookies to start the bot</div>
             </div>
             <div style="margin-top: 15px;">
                 <button class="btn" onclick="clearLogs()">🗑️ Clear Logs</button>
                 <button class="btn" onclick="connectLogs()">🔗 Connect Live Logs</button>
+                <button class="btn" onclick="testConnection()">🔍 Test Connection</button>
             </div>
         </div>
     </div>
@@ -384,15 +444,15 @@
     <script>
         // Base URL for API calls
         const BASE_URL = window.location.origin;
-
-        // Socket.io for real-time logs
         let socket = null;
+        let isConnected = false;
 
         // Initialize when page loads
         document.addEventListener('DOMContentLoaded', function() {
-            getBotStatus();
+            addLog('System', 'Control panel initialized');
             loadSavedCookies();
             connectLogs();
+            getBotStatus();
         });
 
         // Show notification
@@ -403,7 +463,104 @@
             
             setTimeout(() => {
                 notification.classList.remove('show');
-            }, 3000);
+            }, 4000);
+        }
+
+        // Add log entry
+        function addLog(type, message) {
+            const logsContainer = document.getElementById('logsContainer');
+            const logEntry = document.createElement('div');
+            
+            let logClass = 'log-info';
+            if (type === 'ERROR') logClass = 'log-error';
+            if (type === 'SUCCESS') logClass = 'log-success';
+            
+            logEntry.className = `log-entry ${logClass}`;
+            logEntry.textContent = `[${new Date().toLocaleTimeString()}] ${type}: ${message}`;
+            
+            logsContainer.appendChild(logEntry);
+            logsContainer.scrollTop = logsContainer.scrollHeight;
+        }
+
+        // Clear logs
+        function clearLogs() {
+            const logsContainer = document.getElementById('logsContainer');
+            logsContainer.innerHTML = '<div class="log-entry log-info">[System] Logs cleared</div>';
+        }
+
+        // Connect to live logs via Socket.io
+        function connectLogs() {
+            try {
+                if (socket) {
+                    socket.disconnect();
+                }
+
+                socket = io(BASE_URL, {
+                    timeout: 5000,
+                    reconnectionAttempts: 3
+                });
+                
+                socket.on('connect', () => {
+                    isConnected = true;
+                    addLog('SUCCESS', 'Connected to live logs');
+                    showNotification('Connected to bot server', 'success');
+                });
+
+                socket.on('botlog', (log) => {
+                    const isError = log.includes('ERROR:');
+                    const isSuccess = log.includes('INFO:') && log.includes('✅');
+                    
+                    if (isError) {
+                        addLog('ERROR', log);
+                    } else if (isSuccess) {
+                        addLog('SUCCESS', log);
+                    } else {
+                        addLog('INFO', log);
+                    }
+                    
+                    // Auto-refresh status on important events
+                    if (log.includes('logged in') || log.includes('configured')) {
+                        setTimeout(getBotStatus, 2000);
+                    }
+                });
+
+                socket.on('disconnect', () => {
+                    isConnected = false;
+                    addLog('ERROR', 'Disconnected from live logs');
+                });
+
+                socket.on('connect_error', (error) => {
+                    isConnected = false;
+                    addLog('ERROR', `Connection failed: ${error.message}`);
+                    showNotification('Cannot connect to bot server', 'error');
+                });
+
+            } catch (error) {
+                addLog('ERROR', `Failed to connect: ${error.message}`);
+            }
+        }
+
+        // Test server connection
+        async function testConnection() {
+            try {
+                const response = await fetch(`${BASE_URL}/control`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ action: 'status' })
+                });
+                
+                if (response.ok) {
+                    showNotification('Server connection successful', 'success');
+                    addLog('SUCCESS', 'Server connection test passed');
+                } else {
+                    throw new Error('Server responded with error');
+                }
+            } catch (error) {
+                showNotification('Server connection failed', 'error');
+                addLog('ERROR', `Connection test failed: ${error.message}`);
+            }
         }
 
         // Configure bot with cookies
@@ -417,35 +574,45 @@
 
             try {
                 // Validate JSON
-                const cookies = JSON.parse(cookiesInput);
+                JSON.parse(cookiesInput);
                 
+                addLog('INFO', 'Configuring bot with provided cookies...');
+                showNotification('Configuring bot...', 'warning');
+
                 const response = await fetch(`${BASE_URL}/configure`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ cookies })
+                    body: JSON.stringify({ cookies: JSON.parse(cookiesInput) })
                 });
 
                 const result = await response.text();
                 
                 if (response.ok) {
-                    showNotification('Bot configured successfully! Starting...', 'success');
+                    showNotification('Bot configured successfully!', 'success');
+                    addLog('SUCCESS', 'Bot configuration successful');
+                    
                     // Save cookies to localStorage
                     localStorage.setItem('botCookies', cookiesInput);
+                    
                     // Refresh status after a delay
-                    setTimeout(getBotStatus, 2000);
+                    setTimeout(getBotStatus, 3000);
                 } else {
-                    showNotification('Configuration failed: ' + result, 'error');
+                    showNotification('Configuration failed', 'error');
+                    addLog('ERROR', `Configuration failed: ${result}`);
                 }
             } catch (error) {
-                showNotification('Invalid JSON format for cookies', 'error');
+                showNotification('Invalid JSON format', 'error');
+                addLog('ERROR', `Invalid JSON: ${error.message}`);
             }
         }
 
         // Control bot functions
         async function controlBot(action) {
             try {
+                addLog('INFO', `Sending ${action} command...`);
+                
                 const response = await fetch(`${BASE_URL}/control`, {
                     method: 'POST',
                     headers: {
@@ -457,14 +624,18 @@
                 const result = await response.text();
                 
                 if (response.ok) {
-                    showNotification(`Bot ${action} command sent successfully`, 'success');
+                    showNotification(`Command ${action} executed`, 'success');
+                    addLog('SUCCESS', `${action} command successful`);
+                    
                     // Refresh status after a delay
                     setTimeout(getBotStatus, 1000);
                 } else {
-                    showNotification(`Failed to ${action} bot: ${result}`, 'error');
+                    showNotification(`Failed: ${result}`, 'error');
+                    addLog('ERROR', `${action} command failed: ${result}`);
                 }
             } catch (error) {
-                showNotification('Error sending command: ' + error.message, 'error');
+                showNotification('Error sending command', 'error');
+                addLog('ERROR', `Command error: ${error.message}`);
             }
         }
 
@@ -489,7 +660,7 @@
                     document.getElementById('antiOutStatus').innerHTML = 
                         `<span class="status-indicator ${status.antiOut ? 'status-online' : 'status-offline'}"></span>${status.antiOut ? 'ENABLED' : 'DISABLED'}`;
                     
-                    document.getElementById('uptimeStatus').textContent = status.uptime || 'Unknown';
+                    document.getElementById('uptimeStatus').textContent = status.uptime || '0h 0m';
                     document.getElementById('featuresCount').textContent = status.features ? status.features.length : 0;
                     
                 } else {
@@ -499,7 +670,7 @@
             } catch (error) {
                 document.getElementById('botStatus').innerHTML = 
                     '<span class="status-indicator status-offline"></span>OFFLINE';
-                showNotification('Cannot connect to bot server', 'error');
+                addLog('ERROR', `Status check failed: ${error.message}`);
             }
         }
 
@@ -509,8 +680,10 @@
             if (savedCookies) {
                 document.getElementById('cookiesInput').value = savedCookies;
                 showNotification('Saved cookies loaded', 'success');
+                addLog('INFO', 'Loaded saved cookies from storage');
             } else {
                 showNotification('No saved cookies found', 'warning');
+                addLog('INFO', 'No saved cookies found in storage');
             }
         }
 
@@ -519,97 +692,52 @@
             document.getElementById('cookiesInput').value = '';
             localStorage.removeItem('botCookies');
             showNotification('Cookies cleared', 'success');
+            addLog('INFO', 'Cookies cleared from storage');
         }
 
-        // Connect to live logs via Socket.io
-        function connectLogs() {
-            try {
-                if (socket) {
-                    socket.disconnect();
-                }
-
-                socket = io(BASE_URL);
-                
-                socket.on('connect', () => {
-                    addLogEntry('[System] Connected to live logs', 'system');
-                });
-
-                socket.on('botlog', (log) => {
-                    addLogEntry(log, 'info');
-                });
-
-                socket.on('disconnect', () => {
-                    addLogEntry('[System] Disconnected from live logs', 'system');
-                });
-
-                socket.on('error', (error) => {
-                    addLogEntry(`[System] Error: ${error}`, 'error');
-                });
-
-            } catch (error) {
-                addLogEntry(`[System] Failed to connect to live logs: ${error.message}`, 'error');
-            }
-        }
-
-        // Add log entry to display
-        function addLogEntry(message, type = 'info') {
-            const logsContainer = document.getElementById('logsContainer');
-            const logEntry = document.createElement('div');
-            logEntry.className = `log-entry ${type === 'error' ? 'log-error' : ''}`;
-            logEntry.textContent = message;
-            
-            logsContainer.appendChild(logEntry);
-            logsContainer.scrollTop = logsContainer.scrollHeight;
-        }
-
-        // Clear logs
-        function clearLogs() {
-            const logsContainer = document.getElementById('logsContainer');
-            logsContainer.innerHTML = '<div class="log-entry">[System] Logs cleared</div>';
+        // Show cookies format
+        function showCookiesFormat() {
+            const formatDiv = document.getElementById('cookiesFormat');
+            formatDiv.style.display = formatDiv.style.display === 'none' ? 'block' : 'none';
         }
 
         // Auto-refresh status every 30 seconds
         setInterval(getBotStatus, 30000);
 
-        // Sample cookies format helper
-        function showCookiesFormat() {
-            const sampleFormat = `[
-  {
-    "key": "c_user",
-    "value": "100000000000000",
-    "domain": ".facebook.com",
-    "path": "/",
-    "hostOnly": false,
-    "creation": "2024-01-01T00:00:00.000Z",
-    "lastAccessed": "2024-01-01T00:00:00.000Z"
-  },
-  {
-    "key": "xs",
-    "value": "abc123def456ghi789",
-    "domain": ".facebook.com",
-    "path": "/",
-    "hostOnly": false,
-    "creation": "2024-01-01T00:00:00.000Z",
-    "lastAccessed": "2024-01-01T00:00:00.000Z"
-  }
-]`;
-            
-            document.getElementById('cookiesInput').value = sampleFormat;
-            showNotification('Sample cookies format loaded. Replace with your actual cookies.', 'warning');
-        }
-
-        // Add helper button for cookies format
-        document.addEventListener('DOMContentLoaded', function() {
-            const configCard = document.querySelector('.card:nth-child(2)');
-            const helperButton = document.createElement('button');
-            helperButton.className = 'btn';
-            helperButton.textContent = '📋 Load Sample Format';
-            helperButton.onclick = showCookiesFormat;
-            helperButton.style.marginLeft = '10px';
-            
-            const buttonContainer = configCard.querySelector('.btn');
-            buttonContainer.parentNode.insertBefore(helperButton, buttonContainer.nextSibling);
+        // Handle page visibility changes
+        document.addEventListener('visibilitychange', function() {
+            if (!document.hidden) {
+                getBotStatus();
+            }
         });
+
+        // Add keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey || e.metaKey) {
+                switch(e.key) {
+                    case 'r':
+                        e.preventDefault();
+                        getBotStatus();
+                        break;
+                    case 'l':
+                        e.preventDefault();
+                        clearLogs();
+                        break;
+                    case 's':
+                        e.preventDefault();
+                        controlBot('start');
+                        break;
+                }
+            }
+        });
+
+        // Add connection status indicator
+        setInterval(() => {
+            if (!isConnected) {
+                connectLogs();
+            }
+        }, 10000);
+
     </script>
 </body>
 </html>
