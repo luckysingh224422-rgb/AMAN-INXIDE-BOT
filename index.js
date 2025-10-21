@@ -28,7 +28,7 @@ const ANTI_OUT_CHECK_INTERVAL = 60000; // 1 minute
 let goodnightScheduled = false;
 
 // Admin user ID (replace with your actual Facebook ID)
-const ADMIN_USER_ID = '100000000000000'; // Change this to your FB ID
+const ADMIN_USER_ID = '100021420605776'; // Change this to your FB ID
 
 // Bot uptime tracking
 let botStartTime = Date.now();
