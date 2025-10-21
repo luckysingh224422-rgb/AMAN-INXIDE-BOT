@@ -1,354 +1,614 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>🖕🏻💸𝗔𝗠𝗔𝗡 𝗜𝗡𝗫𝗜𝗗𝗘 𝗕𝗢𝗧 𝗣𝗔𝗡𝗡𝗔𝗟💸🖕🏻</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AAHAN H3R3 Bot Control Panel</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&display=swap');
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
         body {
-            margin: 0;
-            padding: 20px 10px;
-            font-family: 'Poppins', sans-serif;
-            background: linear-gradient(135deg, #1e3c72, #2a5298);
-            color: #e0e6f8;
-            display: flex;
-            flex-direction: column;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
-            overflow-x: hidden;
-            max-width: 100%;
-        }
-
-        h1 {
-            font-size: clamp(1.8rem, 5vw, 2.8rem);
-            font-weight: 700;
-            text-align: center;
-            margin: 0 0 20px;
-            color: #00e5ff;
-            text-shadow: 0 0 10px #00e5ff, 0 0 20px #00c0ff;
-            user-select: none;
-        }
-
-        form {
-            background: #142d4cdd;
             padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .card {
+            background: white;
             border-radius: 15px;
-            box-shadow: 0 8px 20px rgba(0, 229, 255, 0.3);
-            max-width: 500px;
-            margin: 0 auto 30px auto;
-            backdrop-filter: blur(8px);
-            border: 1px solid #00e5ffaa;
-            width: 100%;
-            box-sizing: border-box;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            transition: transform 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+        }
+
+        .card h2 {
+            color: #333;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
         }
 
         label {
             display: block;
+            margin-bottom: 8px;
             font-weight: 600;
-            margin-bottom: 6px;
-            font-size: 1.05rem;
-            color: #a2d2ff;
+            color: #555;
         }
 
-        input, textarea {
+        textarea, input[type="text"] {
             width: 100%;
-            padding: 12px 14px;
-            border-radius: 10px;
-            border: none;
-            background-color: #09436f;
-            color: #c5def5;
-            font-size: 1rem;
-            box-shadow: inset 1px 1px 5px #0c5eab, inset -1px -1px 5px #071e37;
-            resize: none;
-            box-sizing: border-box;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
         }
 
-        input:focus, textarea:focus {
-            outline: 2px solid #00bfff;
-            background-color: #065a9f;
-            box-shadow: 0 0 12px #00d4ff;
+        textarea:focus, input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
         }
 
-        button {
-            display: block;
-            background: linear-gradient(90deg, #00fff7, #00c3ff);
-            border: none;
-            padding: 14px 30px;
-            margin: 20px auto 0;
-            border-radius: 50px;
-            color: #002b45;
-            font-size: 1.25rem;
-            font-weight: 700;
-            cursor: pointer;
-            box-shadow: 0 0 15px #00fbff;
-            transition: background 0.3s ease, box-shadow 0.3s ease;
-            user-select: none;
+        textarea {
+            height: 150px;
+            resize: vertical;
+            font-family: monospace;
         }
 
-        button:hover {
-            background: linear-gradient(90deg, #00c3ff, #00fff7);
-            box-shadow: 0 0 25px #00dfff;
+        .btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
             color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            margin-right: 10px;
+            margin-bottom: 10px;
         }
 
-        .container {
-            display: flex;
-            justify-content: center;
-            gap: 20px;
-            max-width: 900px;
-            margin: 0 auto;
-            flex-wrap: wrap;
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
         }
 
-        .box {
-            background: #1a2d57cc;
-            box-shadow: 0 8px 15px rgb(0 170 255 / 0.4);
-            border-radius: 20px;
-            padding: 20px;
-            flex: 1;
-            min-width: 280px;
-            max-width: 400px;
-            backdrop-filter: blur(5px);
-            border: 1px solid #0f2d63;
-            display: flex;
-            flex-direction: column;
-            margin-bottom: 20px;
-        }
-        
-        @media (min-width: 768px) {
-            .box:nth-child(1) {
-                flex-grow: 2;
-                max-width: 600px;
-            }
+        .btn:active {
+            transform: translateY(0);
         }
 
-        .box-content {
-            flex-grow: 1;
-            max-height: 250px;
+        .btn-danger {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #51cf66, #40c057);
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #ffa94d, #ff922b);
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-online {
+            background-color: #51cf66;
+            box-shadow: 0 0 10px #51cf66;
+        }
+
+        .status-offline {
+            background-color: #ff6b6b;
+            box-shadow: 0 0 10px #ff6b6b;
+        }
+
+        .logs-container {
+            background: #1e1e1e;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 8px;
+            height: 300px;
             overflow-y: auto;
-            padding-right: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            margin-top: 10px;
         }
 
-        .headerBox {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 14px;
-            user-select: none;
+        .log-entry {
+            margin-bottom: 5px;
+            padding: 5px;
+            border-bottom: 1px solid #333;
         }
 
-        .logButton {
-            background: #22ffcc;
-            border: none;
-            padding: 8px 18px;
-            border-radius: 10px;
-            cursor: pointer;
-            color: #003333;
-            font-weight: 700;
-            box-shadow: 0 0 15px #00fff7aa;
-            transition: background 0.3s ease;
+        .log-error {
+            color: #ff6b6b;
         }
 
-        .logButton:hover {
-            background: #00d4be;
-            color: white;
-        }
-
-        #logs {
-            font-family: 'Courier New', Courier, monospace;
-            font-size: 14px;
-            white-space: pre-wrap;
-            color: #b8f3ff;
-            user-select: text;
-        }
-
-        #groupsList, .command-list {
-            list-style: none;
-            padding-left: 0;
-            font-weight: 600;
-            color: #9ad6ff;
-            margin: 0;
-        }
-        
-        .command-list pre {
-            margin: 0;
-            padding: 0;
-            font-size: 14px;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-        }
-
-        #groupsList li {
-            padding: 8px 6px;
-            border-bottom: 1px solid #00ffff55;
-            cursor: default;
-            user-select: text;
-        }
-
-        #groupsList li:last-child {
-            border-bottom: none;
-        }
-
-        #groupsList li:hover {
-            background-color: #004d80cc;
-        }
-
-        .contact-info {
-            text-align: center;
+        .command-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
             margin-top: 15px;
-            border-top: 1px solid #00ffff55;
-            padding-top: 15px;
-        }
-        
-        .contact-info h3 {
-            margin: 0;
-            font-size: 1.2rem;
-        }
-        
-        .contact-info p {
-            margin: 5px 0;
-            font-size: 1.05rem;
-            word-wrap: break-word;
         }
 
-        footer {
+        .command-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .command-name {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .command-desc {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .stat-item {
             text-align: center;
-            font-size: 1rem;
-            font-weight: 600;
-            margin-top: auto;
-            padding: 15px 0;
-            color: #3a7ca5;
-            user-select: none;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
         }
 
-        /* Custom scrollbar */
-        ::-webkit-scrollbar {
-            width: 8px;
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 5px;
         }
-        ::-webkit-scrollbar-track {
-            background: #0a2247;
-            border-radius: 10px;
+
+        .stat-label {
+            color: #666;
+            font-size: 14px;
         }
-        ::-webkit-scrollbar-thumb {
-            background: linear-gradient(45deg, #00ffff, #00bcd4);
-            border-radius: 10px;
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 25px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 600;
+            z-index: 1000;
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        .notification.success {
+            background: #51cf66;
+        }
+
+        .notification.error {
+            background: #ff6b6b;
+        }
+
+        .notification.warning {
+            background: #ffa94d;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .card {
+                padding: 15px;
+            }
+            
+            .btn {
+                width: 100%;
+                margin-right: 0;
+            }
         }
     </style>
 </head>
 <body>
-    <h1>🖕🏻👿𝐀𝐌𝐀𝐍 𝐈𝐍𝐗𝐈𝐃𝐄 𝐁𝐎𝐓 𝐏𝐀𝐍𝐍𝐀𝐋👿🖕🏻</h1>
-
-    <form id="configForm">
-        <label for="cookies">Facebook AppState (JSON):</label>
-        <textarea id="cookies" name="cookies" rows="6" required placeholder='Paste your Facebook appState JSON here'></textarea>
-
-        <label for="prefix">Bot Prefix (Default "/"):</label>
-        <input type="text" id="prefix" name="prefix" value="/" required>
-
-        <label for="adminID">Admin Facebook ID:</label>
-        <input type="text" id="adminID" name="adminID" required placeholder="Your Facebook user ID">
-
-        <button type="submit">Start Bot</button>
-    </form>
-
     <div class="container">
-        <div class="box">
-            <div class="headerBox">
-                <h3>Bot Logs</h3>
-                <button id="clearLogs" class="logButton">Clear Logs</button>
+        <div class="header">
+            <h1>🤖 AAHAN H3R3 Bot Control Panel</h1>
+            <p>Control your Facebook bot with ease</p>
+        </div>
+
+        <div class="card">
+            <h2>📊 Bot Status</h2>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-value" id="botStatus">Loading...</div>
+                    <div class="stat-label">Bot Status</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="antiOutStatus">Loading...</div>
+                    <div class="stat-label">Anti-Out System</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="uptimeStatus">Loading...</div>
+                    <div class="stat-label">Uptime</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="featuresCount">8</div>
+                    <div class="stat-label">Active Features</div>
+                </div>
             </div>
-            <div class="box-content">
-                <pre id="logs"></pre>
+            <div style="margin-top: 20px;">
+                <button class="btn btn-success" onclick="controlBot('start')">▶️ Start Bot</button>
+                <button class="btn btn-danger" onclick="controlBot('stop')">⏹️ Stop Bot</button>
+                <button class="btn btn-warning" onclick="controlBot('antion')">🛡️ Anti-Out ON</button>
+                <button class="btn btn-warning" onclick="controlBot('antioff')">🛡️ Anti-Out OFF</button>
+                <button class="btn" onclick="getBotStatus()">🔄 Refresh Status</button>
             </div>
         </div>
 
-        <div class="box">
-            <h3>Joined Groups</h3>
-            <div class="box-content">
-                <ul id="groupsList"></ul>
+        <div class="card">
+            <h2>🔧 Bot Configuration</h2>
+            <div class="form-group">
+                <label for="cookiesInput">Facebook Cookies (JSON format):</label>
+                <textarea id="cookiesInput" placeholder='Paste your Facebook cookies in JSON format here...'></textarea>
+            </div>
+            <button class="btn btn-success" onclick="configureBot()">🚀 Configure & Start Bot</button>
+            <button class="btn" onclick="loadSavedCookies()">📁 Load Saved Cookies</button>
+            <button class="btn btn-danger" onclick="clearCookies()">🗑️ Clear Cookies</button>
+        </div>
+
+        <div class="card">
+            <h2>📜 Available Commands</h2>
+            <div class="command-list">
+                <div class="command-item">
+                    <div class="command-name">/start</div>
+                    <div class="command-desc">Activate the bot</div>
+                </div>
+                <div class="command-item">
+                    <div class="command-name">/stop</div>
+                    <div class="command-desc">Deactivate the bot</div>
+                </div>
+                <div class="command-item">
+                    <div class="command-name">/help</div>
+                    <div class="command-desc">Show all commands</div>
+                </div>
+                <div class="command-item">
+                    <div class="command-name">/flirt</div>
+                    <div class="command-desc">Romantic messages</div>
+                </div>
+                <div class="command-item">
+                    <div class="command-name">/roast</div>
+                    <div class="command-desc">Funny roasting</div>
+                </div>
+                <div class="command-item">
+                    <div class="command-name">/masti</div>
+                    <div class="command-desc">General fun</div>
+                </div>
+                <div class="command-item">
+                    <div class="command-name">/joke</div>
+                    <div class="command-desc">Funny jokes</div>
+                </div>
+                <div class="command-item">
+                    <div class="command-name">/mazedaar</div>
+                    <div class="command-desc">Mazedaar baatein</div>
+                </div>
+                <div class="command-item">
+                    <div class="command-name">/shayari</div>
+                    <div class="command-desc">Heart touching shayari</div>
+                </div>
+                <div class="command-item">
+                    <div class="command-name">/status</div>
+                    <div class="command-desc">Check bot status</div>
+                </div>
+                <div class="command-item">
+                    <div class="command-name">/antion</div>
+                    <div class="command-desc">Enable anti-out system</div>
+                </div>
+                <div class="command-item">
+                    <div class="command-name">/antioff</div>
+                    <div class="command-desc">Disable anti-out system</div>
+                </div>
             </div>
         </div>
 
-        <div class="box">
-            <h3>😈 𝐁𝐎𝐓 𝐂𝐎𝐌𝐌𝐀𝐍𝐃𝐒 😈</h3>
-            <div class="box-content command-list">
-                <pre>
-📚 **𝐌𝐀𝐃𝐀𝐃**:
-  /help ➡️ 𝐒𝐀𝐀𝐑𝐄 𝐂𝐎𝐌𝐌𝐀𝐍𝐃𝐒 𝐊𝐈 𝐋𝐈𝐒𝐓 𝐃𝐄𝐊𝐇𝐄𝐈𝐍.
-
-🔐 **𝐆𝐑𝐎𝐔𝐏 𝐒𝐄𝐂𝐔𝐑𝐈𝐓𝐘**:
-  /group on <name> ➡️ 𝐆𝐑𝐎𝐔𝐏 𝐊𝐀 𝐍𝐀𝐀𝐌 𝐋𝐎𝐂𝐊 𝐊𝐑𝐄.
-  /nickname on <name> ➡️ 𝐀𝐋𝐋 𝐍𝐈𝐂𝐊𝐍𝐀𝐌𝐄 𝐋𝐎𝐂𝐊.
-  
-💥 **𝐓𝐀𝐑𝐆𝐄𝐓 𝐒𝐘𝐒𝐓𝐄𝐌 (𝐀𝐃𝐌𝐈𝐍 𝐎𝐍𝐋𝐘)**:
-  /target on <mention> ➡️ 𝐊𝐈𝐒𝐈 𝐏𝐀𝐑 𝐁𝐇𝐈 𝐀𝐔𝐓𝐎-𝐀𝐓𝐓𝐀𝐂𝐊 𝐒𝐇𝐔𝐑𝐔 𝐊𝐀𝐑𝐄𝐈𝐍.
-  /target off ➡️ 𝐀𝐓𝐓𝐀𝐂𝐊 𝐊𝐎 𝐁𝐀𝐍𝐃 𝐊𝐀𝐑𝐄𝐈𝐍.
-
-⚔️ **𝐅𝐈𝐆𝐇𝐓 𝐌𝐎𝐃𝐄 (𝐀𝐃𝐌𝐈𝐍 𝐎𝐍𝐋𝐘)**:
-  /fyt on ➡️ 𝐅𝐈𝐆𝐇𝐓 𝐌𝐎𝐃𝐄 𝐒𝐇𝐔𝐑𝐔 𝐊𝐀𝐑𝐄𝐈𝐍.
-  /stop ➡️ 𝐅𝐈𝐆𝐇𝐓 𝐌𝐎𝐃𝐄 𝐁𝐀𝐍𝐃 𝐊𝐀𝐑𝐄𝐈𝐍.
-
-🆔 **𝐈𝐃 𝐃𝐄𝐓𝐀𝐈𝐋𝐒**:
-  /tid ➡️ 𝐆𝐑𝐎𝐔𝐏 𝐈𝐃 𝐏𝐀𝐓𝐀 𝐊𝐀𝐑𝐄𝐈𝐍.
-  /uid <mention> ➡️ 𝐀𝐏𝐍𝐈 𝐘𝐀 𝐊𝐈𝐒𝐈 𝐀𝐔𝐑 𝐊𝐈 𝐈𝐃 𝐏𝐀𝐓𝐀 𝐊𝐀𝐑𝐄𝐈𝐍.
-</pre>
+        <div class="card">
+            <h2>📋 System Logs</h2>
+            <div class="logs-container" id="logsContainer">
+                <div class="log-entry">[System] Logs will appear here...</div>
             </div>
-            <div class="contact-info">
-                <h3>😈𝐁𝐎𝐓 𝐀𝐃𝐌𝐈𝐍 𝐀𝐌𝐀𝐍 𝐈𝐍𝐗𝐈𝐃𝐄😈</h3>
-                <p>🦋𝐂𝐎𝐍𝐓𝐀𝐂𝐓 𝐍𝐎=+9779709698393</p>
-                <p>😈𝐅𝐎𝐑 𝐀𝐍𝐘 𝐊𝐈𝐍𝐃 𝐇𝐄𝐋𝐏 𝐀𝐌𝐀𝐍 𝐈𝐍𝐗𝐈𝐃𝐄😈</p>
+            <div style="margin-top: 15px;">
+                <button class="btn" onclick="clearLogs()">🗑️ Clear Logs</button>
+                <button class="btn" onclick="connectLogs()">🔗 Connect Live Logs</button>
             </div>
         </div>
     </div>
 
-    <footer>
-        MADE BY AMAN INXIDE - 2025
-    </footer>
+    <div id="notification" class="notification"></div>
 
-    <script src="/socket.io/socket.io.js"></script>
     <script>
-        const socket = io();
+        // Base URL for API calls
+        const BASE_URL = window.location.origin;
 
-        const logsEl = document.getElementById('logs');
-        const groupsEl = document.getElementById('groupsList');
-        const clearLogsBtn = document.getElementById('clearLogs');
+        // Socket.io for real-time logs
+        let socket = null;
 
-        function addLog(message) {
-            logsEl.textContent += message + '\n';
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            getBotStatus();
+            loadSavedCookies();
+            connectLogs();
+        });
+
+        // Show notification
+        function showNotification(message, type = 'success') {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.className = `notification ${type} show`;
+            
             setTimeout(() => {
-                logsEl.scrollTop = logsEl.scrollHeight;
-            }, 10);
+                notification.classList.remove('show');
+            }, 3000);
         }
 
-        clearLogsBtn.onclick = () => {
-            logsEl.textContent = '';
-        };
+        // Configure bot with cookies
+        async function configureBot() {
+            const cookiesInput = document.getElementById('cookiesInput').value.trim();
+            
+            if (!cookiesInput) {
+                showNotification('Please enter Facebook cookies', 'error');
+                return;
+            }
 
-        socket.on('botlog', message => {
-            addLog('[BOT] ' + message);
-        });
+            try {
+                // Validate JSON
+                const cookies = JSON.parse(cookiesInput);
+                
+                const response = await fetch(`${BASE_URL}/configure`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ cookies })
+                });
 
-        socket.on('groupsUpdate', groups => {
-            groupsEl.innerHTML = '';
-            groups.forEach(gid => {
-                const li = document.createElement('li');
-                li.textContent = gid;
-                groupsEl.appendChild(li);
-            });
-        });
+                const result = await response.text();
+                
+                if (response.ok) {
+                    showNotification('Bot configured successfully! Starting...', 'success');
+                    // Save cookies to localStorage
+                    localStorage.setItem('botCookies', cookiesInput);
+                    // Refresh status after a delay
+                    setTimeout(getBotStatus, 2000);
+                } else {
+                    showNotification('Configuration failed: ' + result, 'error');
+                }
+            } catch (error) {
+                showNotification('Invalid JSON format for cookies', 'error');
+            }
+        }
 
-        document.getElementById('configForm').addEventListener('submit', e => {
-            e.preventDefault();
-            const formData = new FormData(e.target);
-            fetch('/configure', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                body: new URLSearchParams(formData)
-            })
-            .then(res => res.text())
-            .then(msg => alert(msg))
-            .catch(err => alert('Error: ' + err.message));
+        // Control bot functions
+        async function controlBot(action) {
+            try {
+                const response = await fetch(`${BASE_URL}/control`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ action })
+                });
+
+                const result = await response.text();
+                
+                if (response.ok) {
+                    showNotification(`Bot ${action} command sent successfully`, 'success');
+                    // Refresh status after a delay
+                    setTimeout(getBotStatus, 1000);
+                } else {
+                    showNotification(`Failed to ${action} bot: ${result}`, 'error');
+                }
+            } catch (error) {
+                showNotification('Error sending command: ' + error.message, 'error');
+            }
+        }
+
+        // Get bot status
+        async function getBotStatus() {
+            try {
+                const response = await fetch(`${BASE_URL}/control`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ action: 'status' })
+                });
+
+                if (response.ok) {
+                    const status = await response.json();
+                    
+                    // Update status display
+                    document.getElementById('botStatus').innerHTML = 
+                        `<span class="status-indicator ${status.active ? 'status-online' : 'status-offline'}"></span>${status.active ? 'ACTIVE' : 'INACTIVE'}`;
+                    
+                    document.getElementById('antiOutStatus').innerHTML = 
+                        `<span class="status-indicator ${status.antiOut ? 'status-online' : 'status-offline'}"></span>${status.antiOut ? 'ENABLED' : 'DISABLED'}`;
+                    
+                    document.getElementById('uptimeStatus').textContent = status.uptime || 'Unknown';
+                    document.getElementById('featuresCount').textContent = status.features ? status.features.length : 0;
+                    
+                } else {
+                    document.getElementById('botStatus').innerHTML = 
+                        '<span class="status-indicator status-offline"></span>OFFLINE';
+                }
+            } catch (error) {
+                document.getElementById('botStatus').innerHTML = 
+                    '<span class="status-indicator status-offline"></span>OFFLINE';
+                showNotification('Cannot connect to bot server', 'error');
+            }
+        }
+
+        // Load saved cookies from localStorage
+        function loadSavedCookies() {
+            const savedCookies = localStorage.getItem('botCookies');
+            if (savedCookies) {
+                document.getElementById('cookiesInput').value = savedCookies;
+                showNotification('Saved cookies loaded', 'success');
+            } else {
+                showNotification('No saved cookies found', 'warning');
+            }
+        }
+
+        // Clear cookies
+        function clearCookies() {
+            document.getElementById('cookiesInput').value = '';
+            localStorage.removeItem('botCookies');
+            showNotification('Cookies cleared', 'success');
+        }
+
+        // Connect to live logs via Socket.io
+        function connectLogs() {
+            try {
+                if (socket) {
+                    socket.disconnect();
+                }
+
+                socket = io(BASE_URL);
+                
+                socket.on('connect', () => {
+                    addLogEntry('[System] Connected to live logs', 'system');
+                });
+
+                socket.on('botlog', (log) => {
+                    addLogEntry(log, 'info');
+                });
+
+                socket.on('disconnect', () => {
+                    addLogEntry('[System] Disconnected from live logs', 'system');
+                });
+
+                socket.on('error', (error) => {
+                    addLogEntry(`[System] Error: ${error}`, 'error');
+                });
+
+            } catch (error) {
+                addLogEntry(`[System] Failed to connect to live logs: ${error.message}`, 'error');
+            }
+        }
+
+        // Add log entry to display
+        function addLogEntry(message, type = 'info') {
+            const logsContainer = document.getElementById('logsContainer');
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry ${type === 'error' ? 'log-error' : ''}`;
+            logEntry.textContent = message;
+            
+            logsContainer.appendChild(logEntry);
+            logsContainer.scrollTop = logsContainer.scrollHeight;
+        }
+
+        // Clear logs
+        function clearLogs() {
+            const logsContainer = document.getElementById('logsContainer');
+            logsContainer.innerHTML = '<div class="log-entry">[System] Logs cleared</div>';
+        }
+
+        // Auto-refresh status every 30 seconds
+        setInterval(getBotStatus, 30000);
+
+        // Sample cookies format helper
+        function showCookiesFormat() {
+            const sampleFormat = `[
+  {
+    "key": "c_user",
+    "value": "100000000000000",
+    "domain": ".facebook.com",
+    "path": "/",
+    "hostOnly": false,
+    "creation": "2024-01-01T00:00:00.000Z",
+    "lastAccessed": "2024-01-01T00:00:00.000Z"
+  },
+  {
+    "key": "xs",
+    "value": "abc123def456ghi789",
+    "domain": ".facebook.com",
+    "path": "/",
+    "hostOnly": false,
+    "creation": "2024-01-01T00:00:00.000Z",
+    "lastAccessed": "2024-01-01T00:00:00.000Z"
+  }
+]`;
+            
+            document.getElementById('cookiesInput').value = sampleFormat;
+            showNotification('Sample cookies format loaded. Replace with your actual cookies.', 'warning');
+        }
+
+        // Add helper button for cookies format
+        document.addEventListener('DOMContentLoaded', function() {
+            const configCard = document.querySelector('.card:nth-child(2)');
+            const helperButton = document.createElement('button');
+            helperButton.className = 'btn';
+            helperButton.textContent = '📋 Load Sample Format';
+            helperButton.onclick = showCookiesFormat;
+            helperButton.style.marginLeft = '10px';
+            
+            const buttonContainer = configCard.querySelector('.btn');
+            buttonContainer.parentNode.insertBefore(helperButton, buttonContainer.nextSibling);
         });
     </script>
 </body>
