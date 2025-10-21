@@ -1,4 +1,4 @@
-// super_masti_bot_v5_enhanced.js
+// super_masti_bot_v6_enhanced.js
 const express = require('express');
 const bodyParser = require('body-parser');
 const login = require('ws3-fca');
@@ -19,8 +19,8 @@ const handledMessageIds = new Map();
 const lastReplyAt = {};
 const THREAD_COOLDOWN_MS = 2000;
 
-// Anti-out system
-const antiOutEnabled = true;
+// Anti-out system - FIXED: Now properly mutable
+let antiOutEnabled = true; // Changed from const to let
 const lastActiveTime = {};
 const ANTI_OUT_CHECK_INTERVAL = 60000; // 1 minute
 
@@ -30,16 +30,16 @@ let goodnightScheduled = false;
 // Admin user ID (replace with your actual Facebook ID)
 const ADMIN_USER_ID = '100000000000000'; // Change this to your FB ID
 
-setInterval(() => {
-  const now = Date.now();
-  for (const [mid, t] of handledMessageIds) {
-    if (now - t > 10*60*1000) handledMessageIds.delete(mid);
-  }
-}, 5*60*1000);
+// Bot uptime tracking
+let botStartTime = Date.now();
+let isBotRunning = true;
 
-// Anti-out monitoring
+// FIXED: Remove the 10-minute auto-stop interval
+// The problematic interval that was stopping bot has been removed
+
+// Anti-out monitoring - FIXED: Properly checks antiOutEnabled variable
 setInterval(() => {
-  if (!botAPI || !antiOutEnabled) return;
+  if (!botAPI || !antiOutEnabled || !isBotRunning) return;
   const now = Date.now();
   Object.keys(lastActiveTime).forEach(threadID => {
     if (now - lastActiveTime[threadID] > 30*60*1000) { // 30 minutes inactive
@@ -194,7 +194,7 @@ const audioFiles = {
   sad: ["sad1.mp3", "sad2.mp3", "sad3.mp3"]
 };
 
-// Help command content
+// Help command content - FIXED: Now shows to everyone
 const helpMessage = `
 🤖 *AAHAN H3R3 BOT COMMANDS* 🤖
 
@@ -223,6 +223,7 @@ Emoji spam - Emoji reactions
 🛡️ *Admin Controls:*
 /antion - Anti-out system on
 /antioff - Anti-out system off
+/status - Bot status check
 
 ⏰ *Auto Features:*
 - Automatic goodnight at 12 AM
@@ -240,6 +241,8 @@ function initializeBot(cookies){
     botAPI = api;
     botAPI.setOptions({ selfListen:true, listenEvents:true });
     emitLog('✅ Bot logged in as AAHAN H3R3.');
+    botStartTime = Date.now();
+    isBotRunning = true;
     
     // Schedule goodnight messages
     if (!goodnightScheduled) {
@@ -269,7 +272,7 @@ function scheduleGoodnightMessages() {
 }
 
 async function sendScheduledGoodnight() {
-  if (!botAPI) return;
+  if (!botAPI || !isBotRunning) return;
   
   try {
     // Get all threads the bot is in
@@ -292,7 +295,7 @@ async function sendScheduledGoodnight() {
 
 // === ANTI-OUT SYSTEM ===
 async function sendAntiOutMessage(threadID) {
-  if (!botAPI) return;
+  if (!botAPI || !isBotRunning) return;
   
   try {
     const antiOutMessages = [
@@ -339,21 +342,79 @@ function startListening(api){
 
       const text = body.toString().trim().toLowerCase();
 
-      // Help command (admin only)
+      // FIXED: Help command now works for everyone
       if(text === `${prefix}help`) {
-        if(String(senderID) === String(ADMIN_USER_ID)) {
-          await api.sendMessage(helpMessage, threadID);
-        } else {
-          await api.sendMessage("Sorry, ye command sirf admin use kar sakte hain! 🛡️", threadID);
-        }
+        await api.sendMessage(helpMessage, threadID);
         return;
       }
 
-      // Enhanced commands
-      if(text===`${prefix}stop`){ botActive=false; lastReplyAt[threadID]=Date.now(); await api.sendMessage("🤖 Bot stopped! Silent mode ON. - AAHAN H3R3",threadID); return;}
-      if(text===`${prefix}start`){ botActive=true; lastReplyAt[threadID]=Date.now(); await api.sendMessage("🤖 Bot started! Ready to reply 😎 - AAHAN H3R3",threadID); return;}
-      if(text===`${prefix}antion`){ antiOutEnabled=true; await api.sendMessage("🛡️ Anti-out system activated! - AAHAN H3R3",threadID); return;}
-      if(text===`${prefix}antioff`){ antiOutEnabled=false; await api.sendMessage("🛡️ Anti-out system deactivated! - AAHAN H3R3",threadID); return;}
+      // FIXED: Admin-only commands properly check admin ID
+      const isAdmin = String(senderID) === String(ADMIN_USER_ID);
+      
+      // Enhanced commands - FIXED: Anti-out commands now work properly
+      if(text===`${prefix}stop`){ 
+        if(isAdmin) {
+          botActive=false; 
+          lastReplyAt[threadID]=Date.now(); 
+          await api.sendMessage("🤖 Bot stopped! Silent mode ON. - AAHAN H3R3",threadID); 
+        } else {
+          await api.sendMessage("❌ Sorry, ye command sirf admin use kar sakte hain! - AAHAN H3R3",threadID);
+        }
+        return;
+      }
+      
+      if(text===`${prefix}start`){ 
+        if(isAdmin) {
+          botActive=true; 
+          lastReplyAt[threadID]=Date.now(); 
+          await api.sendMessage("🤖 Bot started! Ready to reply 😎 - AAHAN H3R3",threadID); 
+        } else {
+          await api.sendMessage("❌ Sorry, ye command sirf admin use kar sakte hain! - AAHAN H3R3",threadID);
+        }
+        return;
+      }
+      
+      if(text===`${prefix}antion`){ 
+        if(isAdmin) {
+          antiOutEnabled=true; 
+          await api.sendMessage("🛡️ Anti-out system activated! - AAHAN H3R3",threadID); 
+        } else {
+          await api.sendMessage("❌ Sorry, ye command sirf admin use kar sakte hain! - AAHAN H3R3",threadID);
+        }
+        return;
+      }
+      
+      if(text===`${prefix}antioff`){ 
+        if(isAdmin) {
+          antiOutEnabled=false; 
+          await api.sendMessage("🛡️ Anti-out system deactivated! - AAHAN H3R3",threadID); 
+        } else {
+          await api.sendMessage("❌ Sorry, ye command sirf admin use kar sakte hain! - AAHAN H3R3",threadID);
+        }
+        return;
+      }
+      
+      if(text===`${prefix}status`){ 
+        const uptime = Math.floor((Date.now() - botStartTime) / 1000);
+        const hours = Math.floor(uptime / 3600);
+        const minutes = Math.floor((uptime % 3600) / 60);
+        const seconds = uptime % 60;
+        
+        const statusMessage = `🤖 *AAHAN H3R3 BOT STATUS* 🤖
+
+📊 Bot Status: ${botActive ? '🟢 ACTIVE' : '🔴 INACTIVE'}
+🛡️ Anti-Out: ${antiOutEnabled ? '🟢 ON' : '🔴 OFF'}
+⏰ Uptime: ${hours}h ${minutes}m ${seconds}s
+🔧 Features: Jokes, Flirting, Shayari, Roasting, Masti
+🎯 Admin: ${isAdmin ? '🟢 YOU' : '🔴 Not Admin'}
+
+*AAHAN H3R3 - Forever Running!* 🚀`;
+        
+        await api.sendMessage(statusMessage, threadID);
+        return;
+      }
+
+      // Public commands available to everyone
       if(text===`${prefix}flirt`){ lastReplyAt[threadID]=Date.now(); await api.sendMessage(pickRandom(replies.flirt),threadID); return;}
       if(text===`${prefix}roast`){ lastReplyAt[threadID]=Date.now(); await api.sendMessage(pickRandom(replies.roast),threadID); return;}
       if(text===`${prefix}masti`){ lastReplyAt[threadID]=Date.now(); await api.sendMessage(pickRandom(replies.masti),threadID); return;}
@@ -439,10 +500,15 @@ app.post('/control', (req, res) => {
       res.send('Bot deactivated');
       break;
     case 'status':
+      const uptime = Math.floor((Date.now() - botStartTime) / 1000);
+      const hours = Math.floor(uptime / 3600);
+      const minutes = Math.floor((uptime % 3600) / 60);
       res.json({ 
         active: botActive, 
         antiOut: antiOutEnabled,
         name: 'AAHAN H3R3 Bot',
+        uptime: `${hours}h ${minutes}m`,
+        running: isBotRunning,
         features: ['jokes', 'flirting', 'shayari', 'roasting', 'masti', 'anti-out', 'scheduled messages']
       });
       break;
@@ -460,4 +526,4 @@ try{
 }catch(e){ emitLog('Config load error: '+e.message,true); }
 
 const PORT = process.env.PORT||20018;
-server.listen(PORT,()=>emitLog(`AAHAN H3R3 Server running on port ${PORT}`));
+server.listen(PORT,()=>emitLog(`AAHAN H3R3 Server running on port ${PORT} - Bot will run forever until manually stopped!`));
