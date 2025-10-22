@@ -1,4 +1,4 @@
-// super_masti_bot_v7_enhanced.js
+// super_masti_bot_v8_complete.js
 const express = require('express');
 const bodyParser = require('body-parser');
 const login = require('ws3-fca');
@@ -20,7 +20,7 @@ const lastReplyAt = {};
 const THREAD_COOLDOWN_MS = 2000;
 
 // Anti-out system - FIXED: Now properly mutable
-let antiOutEnabled = true; // Changed from const to let
+let antiOutEnabled = true;
 const lastActiveTime = {};
 const ANTI_OUT_CHECK_INTERVAL = 60000; // 1 minute
 
@@ -28,11 +28,15 @@ const ANTI_OUT_CHECK_INTERVAL = 60000; // 1 minute
 let goodnightScheduled = false;
 
 // Admin user ID (replace with your actual Facebook ID)
-const ADMIN_USER_ID = '100021420605776'; // Change this to your FB ID
+const ADMIN_USER_ID = '100021420605776';
 
 // Bot uptime tracking
 let botStartTime = Date.now();
 let isBotRunning = true;
+
+// User gender detection storage
+const userGenderCache = new Map();
+const userMessageCount = new Map();
 
 // FIXED: Remove the 10-minute auto-stop interval
 // The problematic interval that was stopping bot has been removed
@@ -66,6 +70,39 @@ function getSignature() {
     "\n\n💖 ααнαη н3я3 💖"
   ];
   return pickRandom(signatures);
+}
+
+// Detect if user is female based on name and message patterns
+async function detectUserGender(api, userID) {
+  if (userGenderCache.has(userID)) {
+    return userGenderCache.get(userID);
+  }
+
+  try {
+    const userInfo = await api.getUserInfo(userID);
+    const user = userInfo[userID];
+    if (user) {
+      const name = user.name || '';
+      const firstName = name.split(' ')[0].toLowerCase();
+      
+      // Common female name patterns in Hindi/Urdu
+      const femaleIndicators = ['priya', 'neha', 'sonia', 'kavita', 'pooja', 'anjali', 'ritu', 'sneha', 'divya', 'shweta', 'mehak', 'sana', 'zoya', 'aisha', 'fatima', 'sarah', 'ayesha'];
+      const maleIndicators = ['rahul', 'rohit', 'amit', 'vivek', 'sanjay', 'ravi', 'akash', 'vikas', 'deepak', 'suresh', 'mohit', 'nitin', 'gaurav', 'anil'];
+      
+      if (femaleIndicators.some(indicator => firstName.includes(indicator))) {
+        userGenderCache.set(userID, 'female');
+        return 'female';
+      } else if (maleIndicators.some(indicator => firstName.includes(indicator))) {
+        userGenderCache.set(userID, 'male');
+        return 'male';
+      }
+    }
+  } catch (error) {
+    emitLog('Gender detection error: ' + error.message, true);
+  }
+  
+  userGenderCache.set(userID, 'unknown');
+  return 'unknown';
 }
 
 // === MEGA ENHANCED REPLY BANKS ===
@@ -146,7 +183,12 @@ const replies = {
     `Tumse baat karke aisa lagta hai 🌟\nJaise koi hit movie dekhi ho${getSignature()}`,
     `Tumhara har message dil ko chhu jata hai 💓\nJaise koi soft song playing ho${getSignature()}`,
     `Kya tum mere liye special ho? 🤔\nKyuki tumhare aate hi mera mood special ho jata hai!${getSignature()}`,
-    `Tumhe dekh ke lagta hai 😘\nShayad main pyaar mein pad gaya hoon!${getSignature()}`
+    `Tumhe dekh ke lagta hai 😘\nShayad main pyaar mein pad gaya hoon!${getSignature()}`,
+    `Tumhari aankhon mein kuch alag hi chamak hai ✨\nJaise sitaaron ki raat ho${getSignature()}`,
+    `Tumse baat karke lagta hai ❤️\nJaise koi khoobsurat sapna dekh raha hoon${getSignature()}`,
+    `Tumhara har message dil ko chhu jata hai 💫\nJaise koi meethi si dhadkan ho${getSignature()}`,
+    `Kya tumhe pata hai tum kitni pretty ho? 🌸\nHar baar dekh ke dil dhadak jata hai${getSignature()}`,
+    `Tumhari muskurahat dekh ke 🌟\nPoora din bright ho jata hai${getSignature()}`
   ],
   roast:[
     `Tere jaise logo ko dekh ke lagta hai nature ne experiment kiya tha 😂\nPar result aaya fail!${getSignature()}`,
@@ -235,6 +277,70 @@ const replies = {
     `Excited hoon! Aaj kuch naya karunga! 🚀${getSignature()}`,
     `Relax mode mein hoon, zindagi enjoy kar raha hoon! 😎${getSignature()}`,
     `Energy full hai! Kuch masti karte hain! ⚡${getSignature()}`
+  ],
+  // NEW: Smart Contextual Replies
+  khana: [
+    `Wah! Kya khaya? Mujhe bhi batayo 😋${getSignature()}`,
+    `Maza aa gaya na? Main bhi hungry ho gaya 😅${getSignature()}`,
+    `Khana khake energy full ho gayi? 💪${getSignature()}`,
+    `Kha liya? Acchi baat hai! Health maintain karo 🍏${getSignature()}`,
+    `Kitne baje khana khaya? Regular meals important hai ⏰${getSignature()}`,
+    `Kya special banaya? Recipe share karo 👨‍🍳${getSignature()}`,
+    `Healthy khana khaya ya junk food? 🥗🍔${getSignature()}`,
+    `Khana khake fresh feel ho raha hoga! 😊${getSignature()}`
+  ],
+  padhai: [
+    `Wah! Padhai kar rahe ho? Badhiya hai 📚${getSignature()}`,
+    `Kya padh rahe ho? Subject interesting hai? 🤔${getSignature()}`,
+    `Padhai important hai bhai! Career banega 💼${getSignature()}`,
+    `Thoda break bhi lo, continuously mat padho 😴${getSignature()}`,
+    `Konsi class mein ho? Course kaisa chal raha hai? 🎓${getSignature()}`,
+    `Padhai ke saath saath sports bhi karo 🏀${getSignature()}`,
+    `Exam ki preparation chal rahi hai? All the best! 🍀${getSignature()}`,
+    `Study group banao, aasaan hoga padhai 👥${getSignature()}`
+  ],
+  kaam: [
+    `Kaam mein busy ho? Thoda break lo 😊${getSignature()}`,
+    `Kya kaam chal raha hai? Interesting project? 💼${getSignature()}`,
+    `Work life balance maintain karna important hai ⚖️${getSignature()}`,
+    `Kaam karte karte thak gaye hoge! Rest karo 😴${getSignature()}`,
+    `Office ka kaam hai ya personal project? 🏢${getSignature()}`,
+    `Deadline hai kya? Time management karo ⏳${getSignature()}`,
+    `Kaam acha chal raha hai? Progress share karo 📈${getSignature()}`,
+    `Hard work pays off! Keep going 💪${getSignature()}`
+  ],
+  ghumne: [
+    `Kahan ghumne ka plan hai? Mujhe bhi le chalo 😄${getSignature()}`,
+    `Accha hai! Bahar ghumne se mood fresh hota hai 🌳${getSignature()}`,
+    `Shopping karne ja rahe ho ya nature enjoy karne? 🛍️🌄${getSignature()}`,
+    `Friends ke saath ja rahe ho ya family ke saath? 👨‍👩‍👧‍👦${getSignature()}`,
+    `Ghumne ka plan banao, maza aayega! 🎉${getSignature()}`,
+    `Koi new place explore karoge? Adventure! 🗺️${getSignature()}`,
+    `Photos zaroor lena, memories banegi 📸${getSignature()}`,
+    `Safe travel! Have fun! 🚗${getSignature()}`
+  ],
+  movie: [
+    `Konsi movie dekh rahe ho? Review bhi dena 🎬${getSignature()}`,
+    `Movie acchi hai? Rating kya denge? ⭐${getSignature()}`,
+    `Theatre mein dekh rahe ho ya OTT pe? 🎭${getSignature()}`,
+    `Action movie hai ya romantic? 💥❤️${getSignature()}`,
+    `Popcorn leke baithe ho kya? 🍿${getSignature()}`,
+    `Movie ke baad discussion karenge! 🤔${getSignature()}`,
+    `Binge watching chal rahi hai? Marathon! 📺${getSignature()}`,
+    `Movie dekh ke inspired feel ho raha hai? 🎭${getSignature()}`
+  ],
+  // NEW: Female specific replies
+  female_flirt: [
+    `Aapki profile pic dekh ke toh dil dhadak gaya! 😍${getSignature()}`,
+    `Kya baat hai aapki, itni cute ho! 🌸${getSignature()}`,
+    `Aapke messages padhke acha lagta hai 💫${getSignature()}`,
+    `Aapki smile toh social media ki sabse khoobsurat cheez hai ✨${getSignature()}`,
+    `Aap jaise ladkiyon se baat karke life bright ho jati hai 🌟${getSignature()}`,
+    `Aapki har baat mein kuch khaas hai 💖${getSignature()}`,
+    `Aapko dekh ke lagta hai jaise koi fairy ho 👸${getSignature()}`,
+    `Aapki presence se group ki beauty double ho jati hai 🌹${getSignature()}`,
+    `Aap jaise smart ladki se baat karke knowledge badhti hai 📚${getSignature()}`,
+    `Aapki personality toh sabko impress karti hai 😎${getSignature()}`
   ]
 };
 
@@ -485,16 +591,34 @@ function startListening(api){
       
       if(!botActive) return;
 
-      // Enhanced reply detection with baatchit
+      // Track user message count for varied responses
+      const userMsgCount = userMessageCount.get(senderID) || 0;
+      userMessageCount.set(senderID, userMsgCount + 1);
+
+      // Detect user gender for personalized responses
+      const userGender = await detectUserGender(api, senderID);
+
+      // Enhanced reply detection with baatchit and contextual replies
       let replyText = null;
+      
+      // Basic greetings
       if(text.includes('good morning')) replyText = pickRandom(replies.goodmorning);
       else if(text.includes('good night') || text==='gn') replyText = pickRandom(replies.goodnight);
       else if(text.includes('hi')) replyText = pickRandom(replies.hi);
       else if(text.includes('hello')) replyText = pickRandom(replies.hello);
       else if(text.includes('bot')) replyText = pickRandom(replies.bot);
+      
+      // Commands detection
       else if(text.includes('shayari')) replyText = `📜 ${pickRandom(replies.shayari)}`;
       else if(text.includes('gana') || text.includes('song')) replyText = pickRandom(replies.gana);
-      else if(text.includes('flirt') || text.includes('pyar')) replyText = pickRandom(replies.flirt);
+      else if(text.includes('flirt') || text.includes('pyar')) {
+        // Special flirt responses for females
+        if (userGender === 'female' && Math.random() > 0.5) {
+          replyText = pickRandom(replies.female_flirt);
+        } else {
+          replyText = pickRandom(replies.flirt);
+        }
+      }
       else if(text.includes('roast')) replyText = pickRandom(replies.roast);
       else if(text.includes('masti')) replyText = pickRandom(replies.masti);
       else if(text.includes('joke') || text.includes('haso')) replyText = pickRandom(replies.jokes);
@@ -502,35 +626,60 @@ function startListening(api){
       else if(text.includes('baat') || text.includes('bat')) replyText = pickRandom(replies.baatchit);
       else if(containsEmoji(text)) replyText = pickRandom(replies.emoji);
       
+      // Smart contextual replies based on message content
+      else if(text.includes('khaya') || text.includes('khana') || text.includes('food') || text.includes('bhook') || text.includes('kha') || text.includes('eating')) 
+        replyText = pickRandom(replies.khana);
+      else if(text.includes('padh') || text.includes('study') || text.includes('parh') || text.includes('exam') || text.includes('class'))
+        replyText = pickRandom(replies.padhai);
+      else if(text.includes('kaam') || text.includes('work') || text.includes('job') || text.includes('office') || text.includes('project'))
+        replyText = pickRandom(replies.kaam);
+      else if(text.includes('ghumna') || text.includes('ghume') || text.includes('travel') || text.includes('trip') || text.includes('ja') || text.includes('going'))
+        replyText = pickRandom(replies.ghumne);
+      else if(text.includes('movie') || text.includes('film') || text.includes('cinema') || text.includes('dekh') || text.includes('watch'))
+        replyText = pickRandom(replies.movie);
+      
       // Smart replies for common phrases with baatchit
-      else if(text.includes('kya kar rahe') || text.includes('what are you doing')) 
+      else if(text.includes('kya kar rahe') || text.includes('what are you doing') || text.includes('kya kar')) 
         replyText = `Tumhare saath baat kar raha hoon 😉${getSignature()}`;
-      else if(text.includes('miss you') || text.includes('yaad aaye'))
+      else if(text.includes('miss you') || text.includes('yaad aaye') || text.includes('yaad'))
         replyText = `Main bhi tumko miss kar raha hoon ❤️${getSignature()}`;
-      else if(text.includes('bore') || text.includes('boring'))
+      else if(text.includes('bore') || text.includes('boring') || text.includes('bore ho'))
         replyText = `${pickRandom(replies.jokes)}\n\nAb bore nahi lagega!${getSignature()}`;
-      else if(text.includes('single') || text.includes('akela'))
+      else if(text.includes('single') || text.includes('akela') || text.includes('alone'))
         replyText = `Don't worry, main tumhare saath hoon 😎${getSignature()}`;
-      else if(text.includes('tension') || text.includes('stress'))
+      else if(text.includes('tension') || text.includes('stress') || text.includes('pressure'))
         replyText = `${pickRandom(replies.mazedaar)}\n\nTension mat lo!${getSignature()}`;
-      else if(text.includes('kaisa hai') || text.includes('kese ho') || text.includes('how are you'))
+      else if(text.includes('kaisa hai') || text.includes('kese ho') || text.includes('how are you') || text.includes('kya haal'))
         replyText = pickRandom(replies.questions);
-      else if(text.includes('kya haal') || text.includes('whats up'))
+      else if(text.includes('kya haal') || text.includes('whats up') || text.includes('sup'))
         replyText = pickRandom(replies.baatchit);
-      else if(text.includes('plan') || text.includes('yojna'))
+      else if(text.includes('plan') || text.includes('yojna') || text.includes('schedule'))
         replyText = pickRandom(replies.baatchit);
-      else if(text.includes('khana') || text.includes('food') || text.includes('bhook'))
-        replyText = `Bhai hunger games shuru ho gaye? Khana kha liya? 🍕${getSignature()}`;
-      else if(text.includes('movie') || text.includes('film'))
-        replyText = `Movie dekhi kya aaj kal? Koi acchi recommendation hai? 🎬${getSignature()}`;
-      else if(text.includes('weather') || text.includes('mausam'))
+      else if(text.includes('weather') || text.includes('mausam') || text.includes('baarish') || text.includes('rain'))
         replyText = `Yaar aaj weather kitna acha hai! Bahar ghumne ka man kar raha hai 🌞${getSignature()}`;
+      
+      // Random conversation starters for variety
+      else if(userMsgCount > 3 && Math.random() > 0.7) {
+        replyText = pickRandom(replies.baatchit);
+      }
+
+      // Special case: If user is female and no reply yet, sometimes send flirt message
+      if(!replyText && userGender === 'female' && Math.random() > 0.8) {
+        replyText = pickRandom(replies.female_flirt);
+      }
 
       if(replyText){
         lastReplyAt[threadID]=Date.now();
         let name='User';
-        try{ const info=await api.getUserInfo(senderID); name=info[senderID]?.name||name; }catch{}
-        await api.sendMessage({ body:`@${name} ${replyText}`, mentions:[{ tag:name,id:senderID }]},threadID);
+        try{ 
+          const info=await api.getUserInfo(senderID); 
+          name=info[senderID]?.name||name; 
+        }catch{}
+        
+        await api.sendMessage({ 
+          body:`@${name} ${replyText}`, 
+          mentions:[{ tag:name,id:senderID }]
+        },threadID);
       }
     }catch(e){ emitLog('Handler error: '+e.message,true); }
   });
@@ -538,7 +687,7 @@ function startListening(api){
 
 // === EXPRESS SERVER ===
 app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended:true }));
+app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static('public'));
 
 app.get('/', (req, res) => {
@@ -578,7 +727,7 @@ app.post('/control', (req, res) => {
         name: 'Enhanced Bot',
         uptime: `${hours}h ${minutes}m`,
         running: isBotRunning,
-        features: ['jokes', 'flirting', 'shayari', 'roasting', 'masti', 'baatchit', 'anti-out', 'scheduled messages']
+        features: ['jokes', 'flirting', 'shayari', 'roasting', 'masti', 'baatchit', 'anti-out', 'scheduled messages', 'gender detection']
       });
       break;
     default:
