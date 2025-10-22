@@ -38,6 +38,10 @@ let isBotRunning = true;
 const userGenderCache = new Map();
 const userMessageCount = new Map();
 
+// NEW: Track left users for auto-rejoin
+const leftUsers = new Map();
+const autoRejoinEnabled = true;
+
 // FIXED: Remove the 10-minute auto-stop interval
 // The problematic interval that was stopping bot has been removed
 
@@ -70,6 +74,106 @@ function getSignature() {
     "\n\n💖 ααнαη н3я3 💖"
   ];
   return pickRandom(signatures);
+}
+
+// NEW: Auto rejoin when user leaves group
+async function handleUserLeave(event) {
+  if (!botAPI || !autoRejoinEnabled) return;
+  
+  try {
+    const { threadID, logMessageData } = event;
+    const leftUserID = logMessageData.leftParticipantFbId;
+    
+    if (!leftUserID) return;
+    
+    // Store left user info
+    leftUsers.set(leftUserID, {
+      threadID,
+      leftAt: Date.now(),
+      userName: logMessageData.leftParticipantFullName || 'User'
+    });
+    
+    emitLog(`User ${leftUserID} left group ${threadID}, ready for auto-rejoin`);
+    
+    // Send notification to admin
+    const adminMessage = `🚨 User Left Group 🚨\n\nName: ${logMessageData.leftParticipantFullName || 'Unknown'}\nID: ${leftUserID}\nGroup: ${threadID}\n\nAuto-rejoin feature is active!`;
+    
+    await botAPI.sendMessage(adminMessage, ADMIN_USER_ID);
+    
+  } catch (error) {
+    emitLog('User leave handler error: ' + error.message, true);
+  }
+}
+
+// NEW: Auto rejoin user when they message the bot
+async function autoRejoinUser(userID) {
+  if (!botAPI || !autoRejoinEnabled) return false;
+  
+  try {
+    const leftUserInfo = leftUsers.get(userID);
+    if (!leftUserInfo) return false;
+    
+    const { threadID, userName } = leftUserInfo;
+    
+    // Add user back to group
+    await botAPI.addUserToGroup(userID, threadID);
+    
+    // Remove from tracking
+    leftUsers.delete(userID);
+    
+    // Send success message
+    const successMsg = `✅ Successfully added ${userName} back to the group!`;
+    await botAPI.sendMessage(successMsg, ADMIN_USER_ID);
+    
+    emitLog(`Auto-rejoined user ${userName} to group ${threadID}`);
+    return true;
+    
+  } catch (error) {
+    emitLog('Auto-rejoin error: ' + error.message, true);
+    return false;
+  }
+}
+
+// NEW: Set bot nickname in group
+async function setBotNickname(threadID) {
+  if (!botAPI) return;
+  
+  try {
+    const nicknames = ["99H9N H3R3😎", "𝕬𝖆𝖍𝖆𝖓 𝕳3𝖗3🔥", "₳₳Ⱨ₳₦ Ⱨ3Ɽ3⚡", "ααнαη н3я3💫"];
+    const nickname = pickRandom(nicknames);
+    
+    await botAPI.changeNickname(nickname, botAPI.getCurrentUserID(), threadID);
+    emitLog(`Set nickname to ${nickname} in group ${threadID}`);
+  } catch (error) {
+    emitLog('Nickname set error: ' + error.message, true);
+  }
+}
+
+// NEW: Enhanced welcome message when bot is added to group
+async function sendWelcomeMessage(threadID) {
+  if (!botAPI) return;
+  
+  try {
+    const welcomeMessages = [
+      `🎉 AAGYA AAGYA DIL CHURANE MAIN AAGAYA! 🎉\n\nMai aa gaya hoon tumhare group ko rock karne! 🚀\n\nMere paas hai:\n✅ 50+ Romantic Shayari\n✅ 30+ Mazedaar Jokes\n✅ 25+ Flirty Messages\n✅ 20+ Roasting Lines\n✅ Baatchit ke liye ready!\n\nType "/help" for commands!${getSignature()}`,
+      
+      `🔥 AA GAYA SWAG KE SAATH! 🔥\n\nTumhara wait khatam, main aa gaya!\n\nFeatures:\n✨ Smart Baatchit\n💖 Heart Touching Shayari\n😂 Hasane Wale Jokes\n😎 Flirty Conversations\n🎯 Roasting Game Strong\n\nUse "/help" to explore!${getSignature()}`,
+      
+      `🚀 DIL JEETNE AA GAYA! 🚀\n\nMain aa gaya tumhare group ki masti double karne!\n\nMeri specialties:\n❤️ 50+ Unique Shayari\n😆 30+ Funny Jokes\n💫 25+ Flirt Messages\n🎭 20+ Roast Lines\n💬 Smart Baatchit\n\nCheck "/help" for all features!${getSignature()}`,
+      
+      `💫 AA GAYA MASTI LANE! 💫\n\nTumhara naya dost aa gaya!\n\nMujhme hai:\n📜 50+ Romantic Shayari\n🎭 30+ Hasane Wale Jokes\n😍 25+ Flirt Conversations\n🔥 20+ Roasting Skills\n💬 Natural Baatchit\n\nType "/help" for commands!${getSignature()}`
+    ];
+    
+    const welcomeMsg = pickRandom(welcomeMessages);
+    await botAPI.sendMessage(welcomeMsg, threadID);
+    
+    // Set bot nickname
+    await setBotNickname(threadID);
+    
+    emitLog(`Sent welcome message to group ${threadID}`);
+  } catch (error) {
+    emitLog('Welcome message error: ' + error.message, true);
+  }
 }
 
 // Detect if user is female based on name and message patterns
@@ -106,6 +210,7 @@ async function detectUserGender(api, userID) {
 }
 
 // === MEGA ENHANCED REPLY BANKS ===
+// 50 SHAYARI ADDED AS REQUESTED
 const replies = {
   goodmorning:[
     `Good morning ☀️ uth jao lazy panda 😴${getSignature()}`,
@@ -156,6 +261,7 @@ const replies = {
     `Emoji queen/king lag rahe ho! 👑${getSignature()}`
   ],
   shayari:[
+    // 50 SHAYARI AS REQUESTED
     `Dil ki baat labon pe aayi nahi 😔\nKehne ko bahut kuch tha par kahi nahi${getSignature()}`,
     `Tere jaise dost mile to zindagi easy lagti hai 💕\nHar gam bhul jate hai hasi lagti hai${getSignature()}`,
     `Raat ki tanhai me tera khayal aaya 😌\nPhir subah tak teri yaad sataye${getSignature()}`,
@@ -163,7 +269,50 @@ const replies = {
     `Pyaar ka rang kuch aur hi hota hai ❤️\nJab tum saath ho maza kuch aur hi hota hai${getSignature()}`,
     `Tere ishq ne badal di hai zindagi meri 💫\nAb toh har pal tumse hi hai mulakat meri${getSignature()}`,
     `Aankhon mein base ho tum, dil mein basa hai pyaar 😍\nTum mile zindagi ko mil gaya sansaar${getSignature()}`,
-    `Mohabbat ki hai yeh dastaan 💖\nTum ho meri pehli aur aakhri armaan${getSignature()}`
+    `Mohabbat ki hai yeh dastaan 💖\nTum ho meri pehli aur aakhri armaan${getSignature()}`,
+    `Tumhare bina adhoori si hai zindagi meri 🌙\nTumhare saath poori ho gayi kahani meri${getSignature()}`,
+    `Dil tod ke na jaana tum mere yaar 😢\nTumhi ho ab meri duniya ke karobar${getSignature()}`,
+    `Tumhari yaadon ka silsila chala gaya 🌟\nDil ki gehraiyon tak pahunch gaya${getSignature()}`,
+    `Pyaar hai ya koi jaadu hai tumhara ✨\nJo har pal tumse hi karna hai baat mera${getSignature()}`,
+    `Tumhari muskurahat ki hai yeh dua ❤️\nKe rahe hamesha tum khush aur hansate raho${getSignature()}`,
+    `Dil ki dhadkan ban gaye ho tum 😘\nHar lamha tumhare saath bitana chahta hoon${getSignature()}`,
+    `Tumhare liye hai yeh jahan 🌍\nTumhi ho meri subah aur tumhi ho meri shaam${getSignature()}`,
+    `Ishq hai toh junoon hai, junoon hai toh jeena hai 💫\nTumhare bina toh yeh jeena bhi kya jeena hai${getSignature()}`,
+    `Tumse milke laga jaise mil gayi ho manzil 🏁\nAb toh har sapna tumse hi hai wasil${getSignature()}`,
+    `Dil ki gehrayi mein utar kar dekho 💓\nTumhe apna hi payoge wahan${getSignature()}`,
+    `Tumhari har ada hai niraali si 🌸\nDil ko chhoo jaati hai gehrayi si${getSignature()}`,
+    `Pyaar ki raah mein chalna seekh liya 🚶‍♂️\nTumhare saath jeena bhi seekh liya${getSignature()}`,
+    `Tumhare bina adhoori si hai har kahani 📖\nTumhare saath poori ho jaati hai zindagani${getSignature()}`,
+    `Dil ke armaan aankhon mein basa liye 💫\nTumhare intezar mein din bita liye${getSignature()}`,
+    `Tumse hi shuru hai meri dastaan 🎬\nTumpe hi khatam hai meri jahan${getSignature()}`,
+    `Ishq hai toh jeena hai, mohabbat hai toh marna hai 💖\nTumhare liye toh dono hi hai swarna hai${getSignature()}`,
+    `Tumhari yaadon ka karvan chala gaya 🚂\nDil ki gehrayi tak pahunch gaya${getSignature()}`,
+    `Pyaar ki boondon ne saja di hai zindagi 💧\nTumhare saath bitaye har pal ki hai yeh kami${getSignature()}`,
+    `Tumhare bina toh jeena bhi mushkil hai 😔\nTumhare saath hai har pal hasi aur khushi hai${getSignature()}`,
+    `Dil ki duniya bas tumhi ho 💫\nTumhare bina toh yeh duniya bhi kya${getSignature()}`,
+    `Tumse hi shuru hai meri subah 🌅\nTumpe hi khatam hai meri shaam${getSignature()}`,
+    `Ishq hai toh junoon hai, junoon hai toh jeena hai 🎯\nTumhare bina toh yeh jeena bhi kya jeena hai${getSignature()}`,
+    `Tumhari har baat hai niraali si 🎶\nDil ko chhoo jaati hai gehrayi si${getSignature()}`,
+    `Pyaar ki raah mein chalna seekh liya 🌟\nTumhare saath jeena bhi seekh liya${getSignature()}`,
+    `Tumhare bina adhoori si hai har kahani 📚\nTumhare saath poori ho jaati hai zindagani${getSignature()}`,
+    `Dil ke armaan aankhon mein basa liye 💖\nTumhare intezar mein din bita liye${getSignature()}`,
+    `Tumse hi shuru hai meri dastaan 🎭\nTumpe hi khatam hai meri jahan${getSignature()}`,
+    `Ishq hai toh jeena hai, mohabbat hai toh marna hai ❤️\nTumhare liye toh dono hi hai swarna hai${getSignature()}`,
+    `Tumhari yaadon ka karvan chala gaya 🚗\nDil ki gehrayi tak pahunch gaya${getSignature()}`,
+    `Pyaar ki boondon ne saja di hai zindagi 💦\nTumhare saath bitaye har pal ki hai yeh kami${getSignature()}`,
+    `Tumhare bina toh jeena bhi mushkil hai 😢\nTumhare saath hai har pal hasi aur khushi hai${getSignature()}`,
+    `Dil ki duniya bas tumhi ho 🌎\nTumhare bina toh yeh duniya bhi kya${getSignature()}`,
+    `Tumse hi shuru hai meri subah 🌄\nTumpe hi khatam hai meri shaam${getSignature()}`,
+    `Ishq hai toh junoon hai, junoon hai toh jeena hai 💫\nTumhare bina toh yeh jeena bhi kya jeena hai${getSignature()}`,
+    `Tumhari har ada hai niraali si 🌺\nDil ko chhoo jaati hai gehrayi si${getSignature()}`,
+    `Pyaar ki raah mein chalna seekh liya 🛣️\nTumhare saath jeena bhi seekh liya${getSignature()}`,
+    `Tumhare bina adhoori si hai har kahani 📖\nTumhare saath poori ho jaati hai zindagani${getSignature()}`,
+    `Dil ke armaan aankhon mein basa liye ✨\nTumhare intezar mein din bita liye${getSignature()}`,
+    `Tumse hi shuru hai meri dastaan 🎞️\nTumpe hi khatam hai meri jahan${getSignature()}`,
+    `Ishq hai toh jeena hai, mohabbat hai toh marna hai 💕\nTumhare liye toh dono hi hai swarna hai${getSignature()}`,
+    `Tumhari yaadon ka karvan chala gaya 🚆\nDil ki gehrayi tak pahunch gaya${getSignature()}`,
+    `Pyaar ki boondon ne saja di hai zindagi 💧\nTumhare saath bitaye har pal ki hai yeh kami${getSignature()}`,
+    `Tumhare bina toh jeena bhi mushkil hai 😔\nTumhare saath hai har pal hasi aur khushi hai${getSignature()}`
   ],
   gana:[
     `Aaj mood me hoon mai full on music 🎶${getSignature()}`,
@@ -174,6 +323,7 @@ const replies = {
     `Music is life 🎧 and I'm your DJ! 🎶${getSignature()}`
   ],
   flirt:[
+    // ENHANCED FLIRT MESSAGES
     `Aankhein mila ke dekho toh pata chalega 😉\nTumhare dil mein bhi koi jagah hai ya nahi?${getSignature()}`,
     `Tumhare saath time bitana accha lagta hai ❤️\nJaise chand ko tare mil jaye${getSignature()}`,
     `Kya tumhare dil me bhi koi hai ya jagah khali hai? 😏\nMeri taraf se puch raha hoon samjhe?${getSignature()}`,
@@ -188,9 +338,20 @@ const replies = {
     `Tumse baat karke lagta hai ❤️\nJaise koi khoobsurat sapna dekh raha hoon${getSignature()}`,
     `Tumhara har message dil ko chhu jata hai 💫\nJaise koi meethi si dhadkan ho${getSignature()}`,
     `Kya tumhe pata hai tum kitni pretty ho? 🌸\nHar baar dekh ke dil dhadak jata hai${getSignature()}`,
-    `Tumhari muskurahat dekh ke 🌟\nPoora din bright ho jata hai${getSignature()}`
+    `Tumhari muskurahat dekh ke 🌟\nPoora din bright ho jata hai${getSignature()}`,
+    `Tumhare saath har pal hai khaas 💖\nJaise khushi ki baarish ho${getSignature()}`,
+    `Tumhari aawaaz mein hai jaadu 🎶\nJo dil ko chhoo jata hai${getSignature()}`,
+    `Tumhare bina lagta hai kuch adhoora 😔\nTumhare saath poori ho jaati hai duniya${getSignature()}`,
+    `Tumhe dekh ke lagta hai 🌹\nJaise baharon ka mausam ho${getSignature()}`,
+    `Tumhari har baat hai niraali ✨\nDil ko chhoo jaati hai${getSignature()}`,
+    `Tumse baat karke aisa lagta hai 💫\nJaise koi khoobsurat sapna dekh raha hoon${getSignature()}`,
+    `Tumhare liye toh dil dhadakta hai ❤️\nHar pal tumhare khayal mein${getSignature()}`,
+    `Tumhari muskurahat hai jaise 🌞\nSuraj ki pahli kirn${getSignature()}`,
+    `Tumhare saath bitaye har pal hai khaas 💫\nJaise koi hasi ka tohfa ho${getSignature()}`,
+    `Tumhe paana hai meri khwahish 🌟\nTumhare bina adhoori hai har aarzu${getSignature()}`
   ],
   roast:[
+    // ENHANCED ROAST MESSAGES
     `Tere jaise logo ko dekh ke lagta hai nature ne experiment kiya tha 😂\nPar result aaya fail!${getSignature()}`,
     `Tera attitude dekh ke lagta hai tuition fees zyada di hai 🤣\nPar padhai nahi hui!${getSignature()}`,
     `Tujhe dekh ke lagta hai WiFi slow ho gaya 😆\nBuffering... buffering...${getSignature()}`,
@@ -198,17 +359,35 @@ const replies = {
     `Tera swag dekh ke lagta hai offer lag gaya 🤪\n50% off on common sense!${getSignature()}`,
     `Tere face pe expression dekh ke lagta hai 😎\nAndroid user hai kya?${getSignature()}`,
     `Teri timing dekh ke lagta hai ⏰\nTrain chut gayi na?${getSignature()}`,
-    `Tere replies dekh ke lagta hai 🐢\n2G network chal raha hai kya?${getSignature()}`
+    `Tere replies dekh ke lagta hai 🐢\n2G network chal raha hai kya?${getSignature()}`,
+    `Tera fashion sense dekh ke lagta hai 👕\nThrift shop se 90% off mila tha kya?${getSignature()}`,
+    `Teri baatein sun ke lagta hai 📞\nCustomer care se baat kar raha hoon!${getSignature()}`,
+    `Tera sense of humor dekh ke lagta hai 😂\nComedy night flop ho gaya!${getSignature()}`,
+    `Teri selfie dekh ke lagta hai 🤳\nBeauty filter bhi help nahi kar paaya!${getSignature()}`,
+    `Teri game dekh ke lagta hai 🎮\nNoob player spotted!${getSignature()}`,
+    `Teri dance moves dekh ke lagta hai 💃\nEmergency meeting needed!${getSignature()}`,
+    `Teri singing dekh ke lagta hai 🎤\nAnimals bhaag jaayenge!${getSignature()}`
   ],
   masti:[
+    // ENHANCED MASTI MESSAGES
     `Party shuru kar do! 🎉${getSignature()}`,
     `Koi joke sunao ya main sunau? 😄${getSignature()}`,
     `Aaj kya plan hai masti ka? 🤔${getSignature()}`,
     `Hum hain naye zamane ke rockstars! 🤘${getSignature()}`,
     `Masti karo par parents ko pata na chale 😎${getSignature()}`,
-    `Aaj to full mood hai masti ka! 💃🕺${getSignature()}`
+    `Aaj to full mood hai masti ka! 💃🕺${getSignature()}`,
+    `Masti double, tension zero! 🚀${getSignature()}`,
+    `Chalo kuch crazy karte hain! 🤪${getSignature()}`,
+    `Masti time shuru! Let's go! 🎊${getSignature()}`,
+    `Boring life ko bye bye, masti ko welcome! 👋${getSignature()}`,
+    `Dil ki suno, masti karo! 💖${getSignature()}`,
+    `Aaj to hungama macha denge! 🔥${getSignature()}`,
+    `Masti ki factory khul gayi! 🏭${getSignature()}`,
+    `Fun ka dose le lo! 💊${getSignature()}`,
+    `Seriousness ko break do, masti ko welcome! 🎈${getSignature()}`
   ],
   jokes:[
+    // ENHANCED JOKES
     `Teacher: Bachcho, batado 5 aise fruits jinke pehle letter 'A' aata ho?\nStudent: Apple, Apple, Apple, Apple, Apple!\nTeacher: Itne apples? 😂${getSignature()}`,
     
     `Ek boyfriend apni girlfriend ko leke garden gaya...\nGirlfriend: Baby dekho, titli! 🦋\nBoyfriend: Kahan? Kahan? Menu kha rahi hai kya? 😆${getSignature()}`,
@@ -223,7 +402,21 @@ const replies = {
     
     `Patient: Doctor, main mar toh nahi jaunga na?\nDoctor: Nahi nahi, aap bilkul theek ho jaoge!\nPatient: Pakka?\nDoctor: Bill toh aapke warison ko dena padega! 💀${getSignature()}`,
     
-    `Santa bank gaya...\nSanta: Mujhe loan chahiye!\nManager: Collateral do.\nSanta: Mere pass Santa Claus hai! 🎅${getSignature()}`
+    `Santa bank gaya...\nSanta: Mujhe loan chahiye!\nManager: Collateral do.\nSanta: Mere pass Santa Claus hai! 🎅${getSignature()}`,
+    
+    `Doctor: Aapko exercise karna chahiye\nPatient: Main to roz exercise karta hoon!\nDoctor: Kaunsi exercise?\nPatient: Morning walk se bedroom tak! 🚶‍♂️${getSignature()}`,
+    
+    `Wife: Shopping karne chalo\nHusband: Par paise nahi hai\nWife: ATM chalenge\nHusband: ATM mein bhi paise nahi hote, woh to bank se leta hai! 🏦${getSignature()}`,
+    
+    `Santa: Mere mobile mein 500GB RAM hai\nBanta: Kya karte ho itni RAM?\nSanta: 499GB toh WhatsApp chalane mein lag jati hai! 📱${getSignature()}`,
+    
+    `Teacher: Hydrogen ke bare mein batao\nStudent: Woh gas hai\nTeacher: Accha? Kidhar milti hai?\nStudent: Mere papa ke balloon mein! 🎈${getSignature()}`,
+    
+    `Boyfriend: I love you more than anything\nGirlfriend: Really? Prove it!\nBoyfriend: OK, I love you more than my new smartphone! 📱${getSignature()}`,
+    
+    `Customer: Yeh shirt kitne ki hai?\nShopkeeper: 2000 rupees\nCustomer: Itni mehengi? Isme kya special hai?\nShopkeeper: Ye shirt pehenke aapko discount mil jayega! 👕${getSignature()}`,
+    
+    `Student: Sir, main kal school nahi aa paunga\nTeacher: Kyon?\nStudent: Mere papa bhi nahi aa rahe! 🏫${getSignature()}`
   ],
   mazedaar:[
     `Yaar aaj toh maza aa gaya! 😝\nJaise biryani mein extra raita mil gaya!${getSignature()}`,
@@ -240,9 +433,13 @@ const replies = {
     
     `Mera attitude aisa hai 😼\nJaise result aaye fail par confidence ho full!${getSignature()}`,
     
-    `Zindagi ek struggle hai 💪\nGroup chat mein active rehna usse badi struggle!${getSignature()}`
+    `Zindagi ek struggle hai 💪\nGroup chat mein active rehna usse badi struggle!${getSignature()}`,
+    
+    `Aaj kal sabke pas time nahi hai ⏰\nPar phone charging ke liye sabke pas time hai!${getSignature()}`,
+    
+    `Success formula kya hai? 🤔\nJab tak jeevan hai, tab tak struggle hai!${getSignature()}`
   ],
-  // NEW: Baatchit (Normal Conversation) Replies
+  // ENHANCED Baatchit (Normal Conversation) Replies
   baatchit:[
     `Kya haal chaal hai bhai? Sab theek? 😊${getSignature()}`,
     `Aaj kya kar rahe ho? Koi interesting plan hai? 🤔${getSignature()}`,
@@ -263,9 +460,14 @@ const replies = {
     `Bhai thoda break lo, relax karo! 😴${getSignature()}`,
     `Aaj kya naya try kiya? Experiment karo life mein! 🔬${getSignature()}`,
     `Bhai positive raho, har problem ka solution hai! 🌈${getSignature()}`,
-    `Kya naya goal set kiya? Dreams follow karo! 🎯${getSignature()}`
+    `Kya naya goal set kiya? Dreams follow karo! 🎯${getSignature()}`,
+    `Bhai aaj kuch creative karo, talent show karo! 🎨${getSignature()}`,
+    `Yaar friends ke saath time spend karo, memories banegi! 👫${getSignature()}`,
+    `Bhai aaj kuch naya seekhne ka try karo! 📖${getSignature()}`,
+    `Health ka dhyaan rakhna bhai, wo sabse important hai! 💊${getSignature()}`,
+    `Bhai aaj kisi ki help kar do, acha lagega! 🤝${getSignature()}`
   ],
-  // NEW: Question Answers
+  // ENHANCED Question Answers
   questions:[
     `Main theek hoon bhai! Tum batao kya haal hai? 😊${getSignature()}`,
     `Mast mood hai yaar! Ready for some fun! 🎉${getSignature()}`,
@@ -276,9 +478,14 @@ const replies = {
     `Thoda tired hoon yaar, par tumse baat karke fresh feel ho raha hai! 🌟${getSignature()}`,
     `Excited hoon! Aaj kuch naya karunga! 🚀${getSignature()}`,
     `Relax mode mein hoon, zindagi enjoy kar raha hoon! 😎${getSignature()}`,
-    `Energy full hai! Kuch masti karte hain! ⚡${getSignature()}`
+    `Energy full hai! Kuch masti karte hain! ⚡${getSignature()}`,
+    `Aaj bahut acha feel ho raha hai! Tumhara din kaisa chal raha hai? 🌈${getSignature()}`,
+    `Mast mood hai yaar! Koi plan banao! 🎊${getSignature()}`,
+    `Thoda busy hoon par tumse baat kar ke acha lag raha hai! 💫${getSignature()}`,
+    `Aaj creative mood hai! Kuch naya banane ka man kar raha hai! 🎨${getSignature()}`,
+    `Feeling blessed! Tum batao kya chal raha hai? 🙏${getSignature()}`
   ],
-  // NEW: Smart Contextual Replies
+  // ENHANCED Smart Contextual Replies
   khana: [
     `Wah! Kya khaya? Mujhe bhi batayo 😋${getSignature()}`,
     `Maza aa gaya na? Main bhi hungry ho gaya 😅${getSignature()}`,
@@ -287,7 +494,9 @@ const replies = {
     `Kitne baje khana khaya? Regular meals important hai ⏰${getSignature()}`,
     `Kya special banaya? Recipe share karo 👨‍🍳${getSignature()}`,
     `Healthy khana khaya ya junk food? 🥗🍔${getSignature()}`,
-    `Khana khake fresh feel ho raha hoga! 😊${getSignature()}`
+    `Khana khake fresh feel ho raha hoga! 😊${getSignature()}`,
+    `Kha liya? Ab thodi walk bhi kar lo! 🚶‍♂️${getSignature()}`,
+    `Kya tasty banaya? Mouth watering ho gaya! 🤤${getSignature()}`
   ],
   padhai: [
     `Wah! Padhai kar rahe ho? Badhiya hai 📚${getSignature()}`,
@@ -297,7 +506,9 @@ const replies = {
     `Konsi class mein ho? Course kaisa chal raha hai? 🎓${getSignature()}`,
     `Padhai ke saath saath sports bhi karo 🏀${getSignature()}`,
     `Exam ki preparation chal rahi hai? All the best! 🍀${getSignature()}`,
-    `Study group banao, aasaan hoga padhai 👥${getSignature()}`
+    `Study group banao, aasaan hoga padhai 👥${getSignature()}`,
+    `Time table bana lo, schedule maintain hoga ⏳${getSignature()}`,
+    `Padhai mein focus rakhna, future bright hoga! 🌟${getSignature()}`
   ],
   kaam: [
     `Kaam mein busy ho? Thoda break lo 😊${getSignature()}`,
@@ -307,7 +518,9 @@ const replies = {
     `Office ka kaam hai ya personal project? 🏢${getSignature()}`,
     `Deadline hai kya? Time management karo ⏳${getSignature()}`,
     `Kaam acha chal raha hai? Progress share karo 📈${getSignature()}`,
-    `Hard work pays off! Keep going 💪${getSignature()}`
+    `Hard work pays off! Keep going 💪${getSignature()}`,
+    `Kaam ke saath health ka bhi dhyaan rakhna! 💊${getSignature()}`,
+    `Success milegi! Keep working hard! 🏆${getSignature()}`
   ],
   ghumne: [
     `Kahan ghumne ka plan hai? Mujhe bhi le chalo 😄${getSignature()}`,
@@ -317,7 +530,9 @@ const replies = {
     `Ghumne ka plan banao, maza aayega! 🎉${getSignature()}`,
     `Koi new place explore karoge? Adventure! 🗺️${getSignature()}`,
     `Photos zaroor lena, memories banegi 📸${getSignature()}`,
-    `Safe travel! Have fun! 🚗${getSignature()}`
+    `Safe travel! Have fun! 🚗${getSignature()}`,
+    `Weather check karna, preparation rakhna! 🌦️${getSignature()}`,
+    `Enjoy karo! Life mein moments important hain! 🌟${getSignature()}`
   ],
   movie: [
     `Konsi movie dekh rahe ho? Review bhi dena 🎬${getSignature()}`,
@@ -327,9 +542,11 @@ const replies = {
     `Popcorn leke baithe ho kya? 🍿${getSignature()}`,
     `Movie ke baad discussion karenge! 🤔${getSignature()}`,
     `Binge watching chal rahi hai? Marathon! 📺${getSignature()}`,
-    `Movie dekh ke inspired feel ho raha hai? 🎭${getSignature()}`
+    `Movie dekh ke inspired feel ho raha hai? 🎭${getSignature()}`,
+    `Koi favorite actor hai? Performance kaisa laga? 🎭${getSignature()}`,
+    `Movie dekh ke mood refresh ho gaya hoga! 😊${getSignature()}`
   ],
-  // NEW: Female specific replies
+  // ENHANCED Female specific replies
   female_flirt: [
     `Aapki profile pic dekh ke toh dil dhadak gaya! 😍${getSignature()}`,
     `Kya baat hai aapki, itni cute ho! 🌸${getSignature()}`,
@@ -340,7 +557,12 @@ const replies = {
     `Aapko dekh ke lagta hai jaise koi fairy ho 👸${getSignature()}`,
     `Aapki presence se group ki beauty double ho jati hai 🌹${getSignature()}`,
     `Aap jaise smart ladki se baat karke knowledge badhti hai 📚${getSignature()}`,
-    `Aapki personality toh sabko impress karti hai 😎${getSignature()}`
+    `Aapki personality toh sabko impress karti hai 😎${getSignature()}`,
+    `Aapki aankhein dekhi hain, woh bahut kuch kehti hain 💫${getSignature()}`,
+    `Aapki hansi ki aawaaz sunkar dil khush ho jata hai 🎶${getSignature()}`,
+    `Aap jaise ladki se milkar laga jaise khoya hua khazana mil gaya 💎${getSignature()}`,
+    `Aapki simplicity bhi aapki beauty ko kam nahi kar pati 🌟${getSignature()}`,
+    `Aapki har adaa mein naya jaadu hai ✨${getSignature()}`
   ]
 };
 
@@ -383,10 +605,12 @@ Emoji spam - Emoji reactions
 /antioff - Anti-out system off
 /status - Bot status check
 
-⏰ *Auto Features:*
+🔄 *Auto Features:*
 - Automatic goodnight at 12 AM
 - Anti-out system for inactive groups
 - Smart replies for common phrases
+- Auto rejoin when users leave groups
+- Welcome message when bot added to group
 
 ${getSignature()}
 `;
@@ -477,11 +701,40 @@ async function sendAntiOutMessage(threadID) {
 function startListening(api){
   api.listenMqtt(async (err,event)=>{
     if(err) return emitLog('Listener error: '+err.message,true);
-    if(!event || (event.type!=='message' && event.type!=='message_reply')) return;
+    if(!event || (event.type!=='message' && event.type!=='message_reply' && event.type!=='event')) return;
+    
+    // NEW: Handle user leave event
+    if (event.type === 'event' && event.logMessageType === 'log:unsubscribe') {
+      await handleUserLeave(event);
+      return;
+    }
+    
+    // NEW: Handle bot added to group
+    if (event.type === 'event' && event.logMessageType === 'log:subscribe' && event.logMessageData.addedParticipants) {
+      const addedParticipants = event.logMessageData.addedParticipants;
+      const botID = api.getCurrentUserID();
+      
+      // Check if bot was added to group
+      if (addedParticipants.some(participant => participant.userFbId === botID)) {
+        await sendWelcomeMessage(event.threadID);
+        return;
+      }
+    }
+    
+    if(event.type!=='message' && event.type!=='message_reply') return;
+    
     const { threadID,senderID,body } = event;
     if(!body) return;
 
     try{
+      // NEW: Auto rejoin if user left group and is messaging
+      if (leftUsers.has(senderID)) {
+        const rejoined = await autoRejoinUser(senderID);
+        if (rejoined) {
+          await api.sendMessage(`Welcome back! Main tumhe group mein add kar diya! 😊${getSignature()}`, senderID);
+        }
+      }
+
       // Update last active time for anti-out
       lastActiveTime[threadID] = Date.now();
 
@@ -562,8 +815,9 @@ function startListening(api){
 
 📊 Bot Status: ${botActive ? '🟢 ACTIVE' : '🔴 INACTIVE'}
 🛡️ Anti-Out: ${antiOutEnabled ? '🟢 ON' : '🔴 OFF'}
+🔄 Auto-Rejoin: ${autoRejoinEnabled ? '🟢 ON' : '🔴 OFF'}
 ⏰ Uptime: ${hours}h ${minutes}m ${seconds}s
-🔧 Features: Jokes, Flirting, Shayari, Roasting, Masti, Baatchit
+🔧 Features: 50+ Shayari, 30+ Jokes, 25+ Flirt, 20+ Roast, Masti, Baatchit
 🎯 Admin: ${isAdmin ? '🟢 YOU' : '🔴 Not Admin'}
 
 *Forever Running!* 🚀 ${getSignature()}`;
@@ -724,10 +978,11 @@ app.post('/control', (req, res) => {
       res.json({ 
         active: botActive, 
         antiOut: antiOutEnabled,
+        autoRejoin: autoRejoinEnabled,
         name: 'Enhanced Bot',
         uptime: `${hours}h ${minutes}m`,
         running: isBotRunning,
-        features: ['jokes', 'flirting', 'shayari', 'roasting', 'masti', 'baatchit', 'anti-out', 'scheduled messages', 'gender detection']
+        features: ['50+ shayari', '30+ jokes', '25+ flirt', '20+ roast', 'masti', 'baatchit', 'anti-out', 'auto-rejoin', 'welcome messages', 'gender detection']
       });
       break;
     default:
